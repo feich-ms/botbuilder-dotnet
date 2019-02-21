@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AdaptiveCards" Version="1.1.2" />
     <PackageReference Include="Antlr4.CodeGenerator" Version="4.6.6">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -16,6 +17,7 @@
     <ProjectReference Include="..\Microsoft.Bot.Builder.Dialogs.Composition\Microsoft.Bot.Builder.Dialogs.Composition.csproj" />
     <ProjectReference Include="..\Microsoft.Bot.Builder.Dialogs\Microsoft.Bot.Builder.Dialogs.csproj" />
     <ProjectReference Include="..\Microsoft.Bot.Builder.TemplateManager\Microsoft.Bot.Builder.TemplateManager.csproj" />
+    <ProjectReference Include="..\Microsoft.Bot.Schema\Microsoft.Bot.Schema.csproj" />
     <ProjectReference Include="..\Microsoft.CommonExpressions\Microsoft.Expressions.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using AdaptiveCards;
+using Microsoft.Bot.Schema;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
 {
@@ -11,12 +14,12 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             return AppContext.BaseDirectory.Substring(0, AppContext.BaseDirectory.IndexOf("bin")) + "Examples\\" + fileName;
         }
-        
+
 
         [TestMethod]
         public void TestBasicActivity()
-        {   
-            var engine = TemplateEngine.FromFile(GetExampleFilePath("BasicActivity.lg")); 
+        {
+            var engine = TemplateEngine.FromFile(GetExampleFilePath("BasicActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
             var activity = activityGenerator.GenerateActivity("RecentTasks", new { recentTasks = new[] { "Task1" } });
             Assert.AreEqual("Your most recent task is Task1. You can let me know if you want to add or complete a task.", activity.Text);
@@ -41,7 +44,13 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("AdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var activity = activityGenerator.GenerateAdaptiveCardActivity("", null);
+            var activity = activityGenerator.GenerateAdaptiveCardActivity("adaptiveCardTemplate", new { adaptiveCardTitle = "This is adaptive card title" });
+            Assert.AreEqual(1, activity.Attachments.Count);
+            Assert.AreEqual(AdaptiveCard.ContentType, activity.Attachments[0].ContentType);
+            var card = activity.Attachments[0].Content;
+            var adaptiveCard = JsonConvert.DeserializeObject<AdaptiveCard>(JsonConvert.SerializeObject(card));
+            var textBlock = adaptiveCard.Body[0] as AdaptiveTextBlock;
+            Assert.AreEqual("This is adaptive card title", textBlock.Text);
         }
 
         [TestMethod]
@@ -49,7 +58,26 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("NonAdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var activity = activityGenerator.GenerateNonAdaptiveCardActivity("", null);
+            var activity = activityGenerator.GenerateNonAdaptiveCardActivity("HeroCardTemplate", null);
+            Assert.AreEqual(1, activity.Attachments.Count);
+            Assert.AreEqual(HeroCard.ContentType, activity.Attachments[0].ContentType);
+            var card = activity.Attachments[0].Content;
+            var heroCard = JsonConvert.DeserializeObject<HeroCard>(JsonConvert.SerializeObject(card));
+            Assert.AreEqual("Cheese gromit!", heroCard.Title);
+            Assert.AreEqual("Hero Card", heroCard.Subtitle);
+            Assert.AreEqual("This is some text describing the card, it's cool because it's cool", heroCard.Text);
+            Assert.AreEqual("https://memegenerator.net/img/instances/500x/73055378/cheese-gromit.jpg", heroCard.Images[0].Url);
+            Assert.AreEqual("Option 3", heroCard.Buttons[2].Title);
+
+            activity = activityGenerator.GenerateNonAdaptiveCardActivity("AnimationCardTemplate", null);
+            Assert.AreEqual(AnimationCard.ContentType, activity.Attachments[0].ContentType);
+            card = activity.Attachments[0].Content;
+            var animationCard = JsonConvert.DeserializeObject<AnimationCard>(JsonConvert.SerializeObject(card));
+            Assert.AreEqual("Animation Card", animationCard.Title);
+            Assert.AreEqual(true, animationCard.Autoloop);
+            Assert.AreEqual(true, animationCard.Autostart);
+            Assert.AreEqual("https://docs.microsoft.com/en-us/bot-framework/media/how-it-works/architecture-resize.png", animationCard.Image.Url);
+            Assert.AreEqual("http://oi42.tinypic.com/1rchlx.jpg", animationCard.Media[0].Url);
         }
     }
 }

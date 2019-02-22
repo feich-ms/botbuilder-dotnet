@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using AdaptiveCards;
 using Microsoft.Bot.Schema;
@@ -51,10 +52,11 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                 activity = new Activity();
             }
 
-            var cardValue = this.templateEngine.Evaluate(adaptiveCardTemplate, cardScope);
+            var cardValue = this.templateEngine.EvaluateTemplate(adaptiveCardTemplate, cardScope);
             var card = AdaptiveCard.FromJson(cardValue).Card;
             var cardObj = JsonConvert.DeserializeObject(JsonConvert.SerializeObject(card));
             var attachment = new Attachment(AdaptiveCard.ContentType, content: cardObj);
+            activity.Attachments = new List<Attachment>();
             activity.Attachments.Add(attachment);
             return activity;
         }
@@ -71,16 +73,18 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                 activity = new Activity();
             }
 
-            var cardValue = this.templateEngine.Evaluate(nonAdaptiveCardTemplate, cardScope);
+            var cardValue = this.templateEngine.EvaluateTemplate(nonAdaptiveCardTemplate, cardScope);
             var attachment = GenerateNonAdaptiveCard(cardValue);
+            activity.Attachments = new List<Attachment>();
             activity.Attachments.Add(attachment);
             return activity;
         }
 
         private Attachment GenerateNonAdaptiveCard(string card)
         {
+            card = card.Trim();
             card = card.Substring(1, card.Length - 2);
-            var splits = card.Split('\n');
+            var splits = card.Split("\r\n");
             var lines = splits.OfType<string>().ToList();
             var cardType = lines[0].Trim();
             lines.RemoveAt(0);
@@ -101,24 +105,25 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                         cardObj[property] = value;
                         break;
                     case "image":
-                        object urlObj = new { url = value};
-                        cardObj.Add(property, (JToken)urlObj);
+                        var urlObj = new JObject() { { "url", value } };
+                        cardObj.Add(property, urlObj);
                         break;
                     case "images":
                         if (cardObj[property] == null)
                         {
                             cardObj[property] = new JArray();
                         }
-                        urlObj = new { url = value };
-                        cardObj[property].AddAfterSelf(urlObj);
+
+                        urlObj = new JObject() { { "url", value } };
+                        ((JArray)cardObj[property]).Add(urlObj);
                         break;
                     case "media":
                         if (cardObj[property] == null)
                         {
                             cardObj[property] = new JArray();
                         }
-                        var mediaObj = new { url = value };
-                        cardObj[property].AddAfterSelf(mediaObj);
+                        var mediaObj = new JObject() { { "url", value } };
+                        ((JArray)cardObj[property]).Add(mediaObj);
                         break;
                     case "buttons":
                         if (cardObj[property] == null)
@@ -127,8 +132,8 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                         }
                         foreach (var button in value.Split('|'))
                         {
-                            var buttonObj = new { title = button.Trim(), type = "imBack", value = button.Trim() };
-                            cardObj[property].AddAfterSelf(buttonObj);
+                            var buttonObj = new JObject() { { "title", button.Trim() }, { "type", "imBack" }, { "value", button.Trim() } };
+                            ((JArray)cardObj[property]).Add(buttonObj);
                         }
                         break;
                     case "autostart":
@@ -148,28 +153,28 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
             Attachment attachment;
             switch (cardType)
             {
-                case "HeroCard":
+                case "Herocard":
                     attachment = new Attachment(HeroCard.ContentType, content: cardObj);
                     break;
-                case "ThumbnailCard":
+                case "Thumbnailcard":
                     attachment = new Attachment(ThumbnailCard.ContentType, content: cardObj);
                     break;
-                case "AudioCard":
+                case "Audiocard":
                     attachment = new Attachment(AudioCard.ContentType, content: cardObj);
                     break;
-                case "VideoCard":
+                case "Videocard":
                     attachment = new Attachment(VideoCard.ContentType, content: cardObj);
                     break;
-                case "AnimationCard":
+                case "Animationcard":
                     attachment = new Attachment(AnimationCard.ContentType, content: cardObj);
                     break;
-                case "MediaCard":
+                case "Mediacard":
                     attachment = new Attachment(MediaCard.ContentType, content: cardObj);
                     break;
-                case "SigninCard":
+                case "Signincard":
                     attachment = new Attachment(SigninCard.ContentType, content: cardObj);
                     break;
-                case "OauthCard":
+                case "Oauthcard":
                     attachment = new Attachment(OAuthCard.ContentType, content: cardObj);
                     break;
                 default:

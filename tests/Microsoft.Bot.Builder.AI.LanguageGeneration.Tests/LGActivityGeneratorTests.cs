@@ -21,7 +21,9 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("BasicActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var activity = activityGenerator.GenerateActivity("RecentTasks", new { recentTasks = new[] { "Task1" } });
+            var options = new Dictionary<string, object>();
+            options.Add("TextTemplateId", "RecentTasks");
+            var activity = activityGenerator.Generate(options, new { recentTasks = new[] { "Task1" } });
             Assert.AreEqual("Your most recent task is Task1. You can let me know if you want to add or complete a task.", activity.Text);
             Assert.AreEqual("Your most recent task is Task1. You can let me know.", activity.Speak);
 
@@ -29,12 +31,13 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
             // Only the last whitespace before separtor will be removed.
             // That means you need to type two whitespace if you want to keep one whitespace at the end of your Text string.
             // All whitespace after separtor(before speak string) will be removed.
-            activity = activityGenerator.GenerateActivity("RecentTasks", new { recentTasks = new[] { "Task1", "Task2" } });
+            activity = activityGenerator.Generate(options, new { recentTasks = new[] { "Task1", "Task2" } });
             Assert.AreEqual("Your most recent tasks are Task1 and Task2. You can let me know if you want to add or complete a task.  ", activity.Text);
             Assert.AreEqual("Your most recent tasks are Task1 and Task2. You can let me know. ", activity.Speak);
 
             // Use "&&" as separtor
-            activity = activityGenerator.GenerateActivity("RecentTasks", new { recentTasks = new[] { "Task1", "Task2", "Task3" } }, "&&");
+            options.Add("Separtor", "&&");
+            activity = activityGenerator.Generate(options, new { recentTasks = new[] { "Task1", "Task2", "Task3" } });
             Assert.AreEqual("Your most recent tasks are Task1, Task2 and Task3. You can let me know if you want to add or complete a task.", activity.Text);
             Assert.AreEqual("Your most recent tasks are Task1, Task2 and Task3. You can let me know.", activity.Speak);
         }
@@ -44,7 +47,11 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("AdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var activity = activityGenerator.GenerateAdaptiveCardActivity("adaptiveCardTemplate", new { adaptiveCardTitle = "This is adaptive card title" });
+            var options = new Dictionary<string, object>();
+            var attachmentsTemplateIds = new List<KeyValuePair<string, string>>();
+            attachmentsTemplateIds.Add(new KeyValuePair<string, string>("AdaptiveCardTemplateId", "adaptiveCardTemplate"));
+            options.Add("Attachments", attachmentsTemplateIds);
+            var activity = activityGenerator.Generate(options, new { adaptiveCardTitle = "This is adaptive card title" });
             Assert.AreEqual(1, activity.Attachments.Count);
             Assert.AreEqual(AdaptiveCard.ContentType, activity.Attachments[0].ContentType);
             var card = activity.Attachments[0].Content;
@@ -58,8 +65,15 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("NonAdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var activity = activityGenerator.GenerateNonAdaptiveCardActivity("HeroCardTemplate", null);
-            Assert.AreEqual(1, activity.Attachments.Count);
+            var options = new Dictionary<string, object>();
+            var attachmentsTemplateIds = new List<KeyValuePair<string, string>>();
+            attachmentsTemplateIds.Add(new KeyValuePair<string, string>("CardTemplateId", "HeroCardTemplate"));
+            attachmentsTemplateIds.Add(new KeyValuePair<string, string>("CardTemplateId", "AnimationCardTemplate"));
+            options.Add("Attachments", attachmentsTemplateIds);
+            var activity = activityGenerator.Generate(options, null);
+            Assert.AreEqual(2, activity.Attachments.Count);
+            Assert.AreEqual(AttachmentLayoutTypes.Carousel, activity.AttachmentLayout);
+
             Assert.AreEqual(HeroCard.ContentType, activity.Attachments[0].ContentType);
             var card = activity.Attachments[0].Content;
             var heroCard = JsonConvert.DeserializeObject<HeroCard>(JsonConvert.SerializeObject(card));
@@ -69,9 +83,8 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
             Assert.AreEqual("https://memegenerator.net/img/instances/500x/73055378/cheese-gromit.jpg", heroCard.Images[0].Url);
             Assert.AreEqual("Option 3", heroCard.Buttons[2].Title);
 
-            activity = activityGenerator.GenerateNonAdaptiveCardActivity("AnimationCardTemplate", null);
-            Assert.AreEqual(AnimationCard.ContentType, activity.Attachments[0].ContentType);
-            card = activity.Attachments[0].Content;
+            Assert.AreEqual(AnimationCard.ContentType, activity.Attachments[1].ContentType);
+            card = activity.Attachments[1].Content;
             var animationCard = JsonConvert.DeserializeObject<AnimationCard>(JsonConvert.SerializeObject(card));
             Assert.AreEqual("Animation Card", animationCard.Title);
             Assert.AreEqual(true, animationCard.Autoloop);

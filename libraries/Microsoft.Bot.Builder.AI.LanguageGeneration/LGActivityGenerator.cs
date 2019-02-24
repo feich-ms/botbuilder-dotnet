@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using AdaptiveCards;
@@ -17,7 +18,68 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
             this.templateEngine = templateEngine;
         }
 
-        public Activity GenerateActivity(string textAndSpeakTemplateId, object scope, string textAndSpeakSepartor = "||")
+        public Activity Generate(Dictionary<string, object> options, object scope)
+        {
+            /* options schema
+            {
+                "TextTemplateId": "A", // optional if Attachments is not empty.
+                "Separtor": "||", // optional, default "||".
+                "Attachments": [
+                    { "AdaptiveCardTemplateId": "B" },
+                    { "CardTemplateId": "C" },
+                    { "CardTemplateId": "D" },
+                    { "AdaptiveCardTemplateId": "E" }], // optional if TextTemplateId is not null
+                "AttachmentLayoutType": "carousel" // optional, only used for Attachments.Count > 1, default is "carousel", optional value is "list"
+            }
+            */
+            var activity = new Activity();
+            if (options.ContainsKey("TextTemplateId"))
+            {
+                var templateId = options["TextTemplateId"].ToString();
+                var separtor = options.ContainsKey("Separtor") ? options["Separtor"].ToString() : "||";
+                activity = GenerateActivity(templateId, scope, separtor);
+            }
+
+            if (options.ContainsKey("Attachments"))
+            {
+                var attachmentsString = JsonConvert.SerializeObject(options["Attachments"]);
+                var attachmentsObj = JsonConvert.DeserializeObject<List<KeyValuePair<string, string>>>(attachmentsString);
+                activity.Attachments = new List<Attachment>();
+                foreach (var attachmentObj in attachmentsObj)
+                {
+                    if (attachmentObj.Key.Equals("AdaptiveCardTemplateId", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (!string.IsNullOrEmpty(attachmentObj.Value))
+                        {
+                            var attachment = GenerateAdaptiveCardAttachment(attachmentObj.Value, scope);
+                            activity.Attachments.Add(attachment);
+                        }
+                    }
+                    else if (attachmentObj.Key.Equals("CardTemplateId", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (!string.IsNullOrEmpty(attachmentObj.Value))
+                        {
+                            var attachment = GenerateNonAdaptiveCardAttachment(attachmentObj.Value, scope);
+                            activity.Attachments.Add(attachment);
+                        }
+                    }
+                }
+            }
+
+            activity.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+            if (options.ContainsKey("AttachmentLayoutType"))
+            {
+                var attachmentLayoutType = options["AttachmentLayoutType"].ToString();
+                if (attachmentLayoutType.Equals(AttachmentLayoutTypes.List, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    activity.AttachmentLayout = attachmentLayoutType;
+                }
+            }
+
+            return activity;
+        }
+
+        private Activity GenerateActivity(string textAndSpeakTemplateId, object scope, string textAndSpeakSepartor = "||")
         {
             var value = this.templateEngine.EvaluateTemplate(textAndSpeakTemplateId, scope);
             var valueList = value.Split(textAndSpeakSepartor);
@@ -40,48 +102,18 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
             return activity;
         }
 
-        public Activity GenerateAdaptiveCardActivity(string adaptiveCardTemplate, object cardScope, string textAndSpeakTemplateId = null, string textAndSpeakScope = null, string textAndSpeakSepartor = "||")
+        private Attachment GenerateAdaptiveCardAttachment(string adaptiveCardTemplate, object cardScope)
         {
-            Activity activity;
-            if (!string.IsNullOrEmpty(textAndSpeakTemplateId))
-            {
-                activity = this.GenerateActivity(textAndSpeakTemplateId, textAndSpeakScope, textAndSpeakSepartor);
-            }
-            else
-            {
-                activity = new Activity();
-            }
-
             var cardValue = this.templateEngine.EvaluateTemplate(adaptiveCardTemplate, cardScope);
             var card = AdaptiveCard.FromJson(cardValue).Card;
             var cardObj = JsonConvert.DeserializeObject(JsonConvert.SerializeObject(card));
             var attachment = new Attachment(AdaptiveCard.ContentType, content: cardObj);
-            activity.Attachments = new List<Attachment>();
-            activity.Attachments.Add(attachment);
-            return activity;
+            return attachment;
         }
 
-        public Activity GenerateNonAdaptiveCardActivity(string nonAdaptiveCardTemplate, object cardScope, string textAndSpeakTemplateId = null, string textAndSpeakScope = null, string textAndSpeakSepartor = "||")
+        private Attachment GenerateNonAdaptiveCardAttachment(string nonAdaptiveCardTemplate, object cardScope)
         {
-            Activity activity;
-            if (!string.IsNullOrEmpty(textAndSpeakTemplateId))
-            {
-                activity = this.GenerateActivity(textAndSpeakTemplateId, textAndSpeakScope, textAndSpeakSepartor);
-            }
-            else
-            {
-                activity = new Activity();
-            }
-
-            var cardValue = this.templateEngine.EvaluateTemplate(nonAdaptiveCardTemplate, cardScope);
-            var attachment = GenerateNonAdaptiveCard(cardValue);
-            activity.Attachments = new List<Attachment>();
-            activity.Attachments.Add(attachment);
-            return activity;
-        }
-
-        private Attachment GenerateNonAdaptiveCard(string card)
-        {
+            var card = this.templateEngine.EvaluateTemplate(nonAdaptiveCardTemplate, cardScope);
             card = card.Trim();
             card = card.Substring(1, card.Length - 2);
             var splits = card.Split("\r\n");

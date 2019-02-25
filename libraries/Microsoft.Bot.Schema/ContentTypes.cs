@@ -44,14 +44,6 @@ namespace Microsoft.Bot.Schema
     }
 
     /// <summary>
-    /// MediaCard ContentType value
-    /// </summary>
-    public partial class MediaCard
-    {
-        public const string ContentType = "application/vnd.microsoft.card.media";
-    }
-
-    /// <summary>
     /// AudioCard ContentType value
     /// </summary>
     public partial class AudioCard

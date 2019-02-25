@@ -203,9 +203,6 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                 case "Animationcard":
                     attachment = new Attachment(AnimationCard.ContentType, content: cardObj);
                     break;
-                case "Mediacard":
-                    attachment = new Attachment(MediaCard.ContentType, content: cardObj);
-                    break;
                 case "Signincard":
                     attachment = new Attachment(SigninCard.ContentType, content: cardObj);
                     break;

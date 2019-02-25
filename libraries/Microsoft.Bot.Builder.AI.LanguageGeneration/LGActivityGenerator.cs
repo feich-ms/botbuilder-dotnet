@@ -40,6 +40,7 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
         public Activity Generate(ActivityGenerationConfig options, object data)
         {
             var activity = new Activity();
+            activity.Type = ActivityTypes.Message;
 
             (activity.Text, activity.Speak) = GenerateTextAndSpeak(options.TextSpeakTemplateId, options.TextSpeakSeperator, data);
             activity.Attachments = GenerateAttachments(options.Attachments, data);
@@ -64,7 +65,7 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                 }
                 else if (valueList.Length == 2)
                 {
-                    text = valueList[0].Last().Equals(' ') ? valueList[0].Remove(valueList[0].Length - 1) : valueList[0];
+                    text = valueList[0].Length > 0 && valueList[0].Last().Equals(' ') ? valueList[0].Remove(valueList[0].Length - 1) : valueList[0];
                     speak = valueList[1].TrimStart();
                 }
                 else
@@ -78,10 +79,9 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
 
         private List<Attachment> GenerateAttachments(List<AttachmentGenerationConfig> attachmentGenerationConfigs, object data)
         {
-            List<Attachment> attachments = null;
+            var attachments = new List<Attachment>();
             if (attachmentGenerationConfigs != null)
             {
-                attachments = new List<Attachment>();
                 foreach (var attachmentGenerationConfig in attachmentGenerationConfigs)
                 {
                     try

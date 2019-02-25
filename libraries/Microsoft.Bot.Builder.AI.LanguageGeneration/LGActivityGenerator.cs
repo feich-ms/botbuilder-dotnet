@@ -13,6 +13,18 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
     {
         private TemplateEngine templateEngine;
 
+        public const string TextTemplateId = "TextTemplateId";
+
+        public const string AdaptiveCardTemplateId = "AdaptiveCardTemplateId";
+
+        public const string CardTemplateId = "CardTemplateId";
+
+        public const string Attachments = "Attachments";
+
+        public const string Separtor = "Separtor";
+
+        public const string AttachmentLayoutType = "AttachmentLayoutType";
+
         public LGActivityGenerator(TemplateEngine templateEngine)
         {
             this.templateEngine = templateEngine;
@@ -33,21 +45,21 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
             }
             */
             var activity = new Activity();
-            if (options.ContainsKey("TextTemplateId"))
+            if (options.ContainsKey(TextTemplateId))
             {
-                var templateId = options["TextTemplateId"].ToString();
-                var separtor = options.ContainsKey("Separtor") ? options["Separtor"].ToString() : "||";
+                var templateId = options[TextTemplateId].ToString();
+                var separtor = options.ContainsKey(Separtor) ? options[Separtor].ToString() : "||";
                 activity = GenerateActivity(templateId, scope, separtor);
             }
 
-            if (options.ContainsKey("Attachments"))
+            if (options.ContainsKey(Attachments))
             {
-                var attachmentsString = JsonConvert.SerializeObject(options["Attachments"]);
+                var attachmentsString = JsonConvert.SerializeObject(options[Attachments]);
                 var attachmentsObj = JsonConvert.DeserializeObject<List<KeyValuePair<string, string>>>(attachmentsString);
                 activity.Attachments = new List<Attachment>();
                 foreach (var attachmentObj in attachmentsObj)
                 {
-                    if (attachmentObj.Key.Equals("AdaptiveCardTemplateId", StringComparison.InvariantCultureIgnoreCase))
+                    if (attachmentObj.Key.Equals(AdaptiveCardTemplateId, StringComparison.InvariantCultureIgnoreCase))
                     {
                         if (!string.IsNullOrEmpty(attachmentObj.Value))
                         {
@@ -55,7 +67,7 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                             activity.Attachments.Add(attachment);
                         }
                     }
-                    else if (attachmentObj.Key.Equals("CardTemplateId", StringComparison.InvariantCultureIgnoreCase))
+                    else if (attachmentObj.Key.Equals(CardTemplateId, StringComparison.InvariantCultureIgnoreCase))
                     {
                         if (!string.IsNullOrEmpty(attachmentObj.Value))
                         {
@@ -67,9 +79,9 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
             }
 
             activity.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-            if (options.ContainsKey("AttachmentLayoutType"))
+            if (options.ContainsKey(AttachmentLayoutType))
             {
-                var attachmentLayoutType = options["AttachmentLayoutType"].ToString();
+                var attachmentLayoutType = options[AttachmentLayoutType].ToString();
                 if (attachmentLayoutType.Equals(AttachmentLayoutTypes.List, StringComparison.InvariantCultureIgnoreCase))
                 {
                     activity.AttachmentLayout = attachmentLayoutType;

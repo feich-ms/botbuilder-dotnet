@@ -9,123 +9,114 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Bot.Builder.AI.LanguageGeneration
 {
+    public class AttachmentGenerationConfig
+    {
+        public string AttachementTemplateId { set; get; }
+
+        // Default non adaptive card.
+        public bool IsAdaptiveCard { set; get; } = false;
+    }
+
+    public class ActivityGenerationConfig
+    {
+        public string TextSpeakTemplateId { set; get; }
+
+        public string TextSpeakSeperator { set; get; } = "||";
+
+        public List<AttachmentGenerationConfig> Attachments { set; get; }
+
+        public string AttachmentLayoutType { set; get; } = AttachmentLayoutTypes.Carousel;
+    }
+
     public class LGActivityGenerator
     {
         private TemplateEngine templateEngine;
-
-        public const string TextTemplateId = "TextTemplateId";
-
-        public const string AdaptiveCardTemplateId = "AdaptiveCardTemplateId";
-
-        public const string CardTemplateId = "CardTemplateId";
-
-        public const string Attachments = "Attachments";
-
-        public const string Separtor = "Separtor";
-
-        public const string AttachmentLayoutType = "AttachmentLayoutType";
 
         public LGActivityGenerator(TemplateEngine templateEngine)
         {
             this.templateEngine = templateEngine;
         }
 
-        public Activity Generate(Dictionary<string, object> options, object scope)
+        public Activity Generate(ActivityGenerationConfig options, object data)
         {
-            /* options schema
-            {
-                "TextTemplateId": "A", // optional if Attachments is not empty.
-                "Separtor": "||", // optional, default "||".
-                "Attachments": [
-                    { "AdaptiveCardTemplateId": "B" },
-                    { "CardTemplateId": "C" },
-                    { "CardTemplateId": "D" },
-                    { "AdaptiveCardTemplateId": "E" }], // optional if TextTemplateId is not null
-                "AttachmentLayoutType": "carousel" // optional, only used for Attachments.Count > 1, default is "carousel", optional value is "list"
-            }
-            */
             var activity = new Activity();
-            if (options.ContainsKey(TextTemplateId))
-            {
-                var templateId = options[TextTemplateId].ToString();
-                var separtor = options.ContainsKey(Separtor) ? options[Separtor].ToString() : "||";
-                activity = GenerateActivity(templateId, scope, separtor);
-            }
 
-            if (options.ContainsKey(Attachments))
-            {
-                var attachmentsString = JsonConvert.SerializeObject(options[Attachments]);
-                var attachmentsObj = JsonConvert.DeserializeObject<List<KeyValuePair<string, string>>>(attachmentsString);
-                activity.Attachments = new List<Attachment>();
-                foreach (var attachmentObj in attachmentsObj)
-                {
-                    if (attachmentObj.Key.Equals(AdaptiveCardTemplateId, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        if (!string.IsNullOrEmpty(attachmentObj.Value))
-                        {
-                            var attachment = GenerateAdaptiveCardAttachment(attachmentObj.Value, scope);
-                            activity.Attachments.Add(attachment);
-                        }
-                    }
-                    else if (attachmentObj.Key.Equals(CardTemplateId, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        if (!string.IsNullOrEmpty(attachmentObj.Value))
-                        {
-                            var attachment = GenerateNonAdaptiveCardAttachment(attachmentObj.Value, scope);
-                            activity.Attachments.Add(attachment);
-                        }
-                    }
-                }
-            }
-
-            activity.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-            if (options.ContainsKey(AttachmentLayoutType))
-            {
-                var attachmentLayoutType = options[AttachmentLayoutType].ToString();
-                if (attachmentLayoutType.Equals(AttachmentLayoutTypes.List, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    activity.AttachmentLayout = attachmentLayoutType;
-                }
-            }
-
+            (activity.Text, activity.Speak) = GenerateTextAndSpeak(options.TextSpeakTemplateId, options.TextSpeakSeperator, data);
+            activity.Attachments = GenerateAttachments(options.Attachments, data);
+            activity.AttachmentLayout = options.AttachmentLayoutType;
+           
             return activity;
         }
 
-        private Activity GenerateActivity(string textAndSpeakTemplateId, object scope, string textAndSpeakSepartor = "||")
+        private (string, string) GenerateTextAndSpeak(string textSpeakTemplateId, string textSpeakSepartor, object data)
         {
-            var value = this.templateEngine.EvaluateTemplate(textAndSpeakTemplateId, scope);
-            var valueList = value.Split(textAndSpeakSepartor);
-            var activity = new Activity();
-            if (valueList.Length == 1)
+            string text = null;
+            string speak = null;
+            if (!string.IsNullOrEmpty(textSpeakTemplateId) && !string.IsNullOrEmpty(textSpeakSepartor))
             {
-                activity.Text = valueList[0];
-                activity.Speak = valueList[0];
-            }
-            else if (valueList.Length == 2)
-            {
-                activity.Text = valueList[0].Last().Equals(' ') ? valueList[0].Remove(valueList[0].Length - 1) : valueList[0];
-                activity.Speak = valueList[1].TrimStart();
-            }
-            else
-            {
-                throw new Exception(string.Format("The format of LG template {0} is wrong.", textAndSpeakTemplateId));
+                var value = this.templateEngine.EvaluateTemplate(textSpeakTemplateId, data);
+                var valueList = value.Split(textSpeakSepartor);
+
+                if (valueList.Length == 1)
+                {
+                    text = valueList[0];
+                    speak = valueList[0];
+                }
+                else if (valueList.Length == 2)
+                {
+                    text = valueList[0].Last().Equals(' ') ? valueList[0].Remove(valueList[0].Length - 1) : valueList[0];
+                    speak = valueList[1].TrimStart();
+                }
+                else
+                {
+                    throw new Exception(string.Format("The format of LG template {0} is wrong.", textSpeakTemplateId));
+                }
             }
 
-            return activity;
+            return (text, speak);
         }
 
-        private Attachment GenerateAdaptiveCardAttachment(string adaptiveCardTemplate, object cardScope)
+        private List<Attachment> GenerateAttachments(List<AttachmentGenerationConfig> attachmentGenerationConfigs, object data)
         {
-            var cardValue = this.templateEngine.EvaluateTemplate(adaptiveCardTemplate, cardScope);
+            List<Attachment> attachments = null;
+            if (attachmentGenerationConfigs != null)
+            {
+                attachments = new List<Attachment>();
+                foreach (var attachmentGenerationConfig in attachmentGenerationConfigs)
+                {
+                    try
+                    {
+                        if (attachmentGenerationConfig.IsAdaptiveCard)
+                        {
+                            attachments.Add(GenerateAdaptiveCardAttachment(attachmentGenerationConfig.AttachementTemplateId, data));
+                        }
+                        else
+                        {
+                            attachments.Add(GenerateNonAdaptiveCardAttachment(attachmentGenerationConfig.AttachementTemplateId, data));
+                        }
+                    }
+                    catch
+                    {
+                        throw new Exception(string.Format("The format of LG template {0} is wrong.", attachmentGenerationConfig.AttachementTemplateId));
+                    }
+                }
+            }
+            
+            return attachments;
+        }
+
+        private Attachment GenerateAdaptiveCardAttachment(string adaptiveCardTemplateId, object data)
+        {
+            var cardValue = this.templateEngine.EvaluateTemplate(adaptiveCardTemplateId, data);
             var card = AdaptiveCard.FromJson(cardValue).Card;
             var cardObj = JsonConvert.DeserializeObject(JsonConvert.SerializeObject(card));
             var attachment = new Attachment(AdaptiveCard.ContentType, content: cardObj);
             return attachment;
         }
 
-        private Attachment GenerateNonAdaptiveCardAttachment(string nonAdaptiveCardTemplate, object cardScope)
+        private Attachment GenerateNonAdaptiveCardAttachment(string nonAdaptiveCardTemplateId, object data)
         {
-            var card = this.templateEngine.EvaluateTemplate(nonAdaptiveCardTemplate, cardScope);
+            var card = this.templateEngine.EvaluateTemplate(nonAdaptiveCardTemplateId, data);
             card = card.Trim();
             card = card.Substring(1, card.Length - 2);
             var splits = card.Split("\r\n");

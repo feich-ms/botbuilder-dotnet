@@ -21,8 +21,8 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("BasicActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var options = new Dictionary<string, object>();
-            options.Add(LGActivityGenerator.TextTemplateId, "RecentTasks");
+            var options = new ActivityGenerationConfig();
+            options.TextSpeakTemplateId = "RecentTasks";
             var activity = activityGenerator.Generate(options, new { recentTasks = new[] { "Task1" } });
             Assert.AreEqual("Your most recent task is Task1. You can let me know if you want to add or complete a task.", activity.Text);
             Assert.AreEqual("Your most recent task is Task1. You can let me know.", activity.Speak);
@@ -36,7 +36,7 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
             Assert.AreEqual("Your most recent tasks are Task1 and Task2. You can let me know. ", activity.Speak);
 
             // Use "&&" as separtor
-            options.Add(LGActivityGenerator.Separtor, "&&");
+            options.TextSpeakSeperator = "&&";
             activity = activityGenerator.Generate(options, new { recentTasks = new[] { "Task1", "Task2", "Task3" } });
             Assert.AreEqual("Your most recent tasks are Task1, Task2 and Task3. You can let me know if you want to add or complete a task.", activity.Text);
             Assert.AreEqual("Your most recent tasks are Task1, Task2 and Task3. You can let me know.", activity.Speak);
@@ -47,10 +47,9 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("AdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var options = new Dictionary<string, object>();
-            var attachmentsTemplateIds = new List<KeyValuePair<string, string>>();
-            attachmentsTemplateIds.Add(new KeyValuePair<string, string>(LGActivityGenerator.AdaptiveCardTemplateId, "adaptiveCardTemplate"));
-            options.Add(LGActivityGenerator.Attachments, attachmentsTemplateIds);
+            var options = new ActivityGenerationConfig();
+            options.Attachments = new List<AttachmentGenerationConfig>();
+            options.Attachments.Add(new AttachmentGenerationConfig() { AttachementTemplateId = "adaptiveCardTemplate", IsAdaptiveCard = true });
             var activity = activityGenerator.Generate(options, new { adaptiveCardTitle = "This is adaptive card title" });
             Assert.AreEqual(1, activity.Attachments.Count);
             Assert.AreEqual(AdaptiveCard.ContentType, activity.Attachments[0].ContentType);
@@ -65,11 +64,10 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration.Tests
         {
             var engine = TemplateEngine.FromFile(GetExampleFilePath("NonAdaptiveCardActivity.lg"));
             var activityGenerator = new LGActivityGenerator(engine);
-            var options = new Dictionary<string, object>();
-            var attachmentsTemplateIds = new List<KeyValuePair<string, string>>();
-            attachmentsTemplateIds.Add(new KeyValuePair<string, string>(LGActivityGenerator.CardTemplateId, "HeroCardTemplate"));
-            attachmentsTemplateIds.Add(new KeyValuePair<string, string>(LGActivityGenerator.CardTemplateId, "AnimationCardTemplate"));
-            options.Add(LGActivityGenerator.Attachments, attachmentsTemplateIds);
+            var options = new ActivityGenerationConfig();
+            options.Attachments = new List<AttachmentGenerationConfig>();
+            options.Attachments.Add(new AttachmentGenerationConfig() { AttachementTemplateId = "HeroCardTemplate" });
+            options.Attachments.Add(new AttachmentGenerationConfig() { AttachementTemplateId = "AnimationCardTemplate" });
             var activity = activityGenerator.Generate(options, null);
             Assert.AreEqual(2, activity.Attachments.Count);
             Assert.AreEqual(AttachmentLayoutTypes.Carousel, activity.AttachmentLayout);

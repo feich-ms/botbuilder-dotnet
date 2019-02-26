@@ -95,9 +95,9 @@ namespace Microsoft.Bot.Builder.AI.LanguageGeneration
                             attachments.Add(GenerateNonAdaptiveCardAttachment(attachmentGenerationConfig.AttachementTemplateId, data));
                         }
                     }
-                    catch
+                    catch(Exception ex)
                     {
-                        throw new Exception(string.Format("The format of LG template {0} is wrong.", attachmentGenerationConfig.AttachementTemplateId));
+                        throw new Exception(string.Format("The format of LG template {0} is wrong with the exception: {1}.", attachmentGenerationConfig.AttachementTemplateId, ex.Message));
                     }
                 }
             }
